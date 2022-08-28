@@ -1,0 +1,13 @@
+{
+    "Name": "Theme Park",
+    "Author": "SDV Theme Park Team",
+    "Version": "0.1.0",
+    "Description": "THEME PARK",
+    "UniqueID": "SDVTHEMETEAM.SDVThemePark",
+    "UpdateKeys": [],
+    "EntryDll":"SDV-ThemePark.dll",
+    "Dependencies": [
+      {
+      }
+    ]
+}
