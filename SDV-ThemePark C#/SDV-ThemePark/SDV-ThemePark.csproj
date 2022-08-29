@@ -14,7 +14,7 @@
     <Deterministic>true</Deterministic>
     <EnableHarmony>true</EnableHarmony>
     <EnableModDeploy>false</EnableModDeploy>
-	<EnableModZip>false</EnableModZip>
+    <EnableModZip>false</EnableModZip>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
   </PropertyGroup>
@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="ModEntry.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ShellGame\ShellGame.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

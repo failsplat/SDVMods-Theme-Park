@@ -10,6 +10,8 @@ using StardewModdingAPI.Utilities;
 using StardewValley;
 using HarmonyLib;
 
+using SDV_ThemePark.ShellGame;
+
 namespace SDV_ThemePark
 {
     public class ModEntry : Mod
