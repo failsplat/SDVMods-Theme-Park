@@ -28,7 +28,7 @@ namespace SDV_ThemePark
                 return;
             }
 
-            int i = 0;
+            int i;
             string gameName;
             bool enteredNumber = int.TryParse(args[0], out i);
             if (enteredNumber) {
@@ -46,19 +46,22 @@ namespace SDV_ThemePark
                 gameName = args[0];
             }
 
-            if (minigameDict.ContainsKey(gameName))
+            switch (gameName)
             {
-                Monitor.Log($"Running minigame: \"{gameName}\"!", LogLevel.Info);
-                Game1.currentMinigame = Activator.CreateInstance(minigameDict[gameName]) as StardewValley.Minigames.IMinigame;
+                case "shell":
+                    Game1.currentMinigame = new ShellGame.ShellGame(new StardewValley.Object(392, 1), 10, Monitor);
+                    break;
+                default:
+                    if (enteredNumber)
+                    {
+                        Monitor.Log($"Did not find a minigame named: {gameName} (#{i})!", LogLevel.Info);
+                    }
+                    else
+                    {
+                        Monitor.Log($"Did not find a minigame named: {gameName}!", LogLevel.Info);
+                    }
+                    break;
 
-            } 
-            else
-            {   
-                if (enteredNumber) {
-                    Monitor.Log($"Did not find a minigame named: {gameName} (#{i})!", LogLevel.Info);
-                } else {
-                    Monitor.Log($"Did not find a minigame named: {gameName}!", LogLevel.Info); 
-                }
             }
         }
 
@@ -66,11 +69,5 @@ namespace SDV_ThemePark
         {
             {0, "shell"},
         };
-
-        private static readonly Dictionary<string, Type> minigameDict = new Dictionary<string, Type>()
-        {
-
-        };
-
     }
 }
