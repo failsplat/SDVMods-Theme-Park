@@ -10,12 +10,13 @@ namespace SDV_ThemePark.ShellGame {
 	public class ShellGame : IMinigame
 	{
 		private IMonitor monitor;
+		private IModHelper modHelper;
 		// Screen managment
 		public Vector2 upperLeft;
 		private int screenWidth;
 		private int screenHeight;
 		public float pixelScale = 4f;
-		private Texture2D texture;
+		private Texture2D bgtexture;
 		// Gameplay variables
 		public enum GameState
 		{
@@ -59,15 +60,16 @@ namespace SDV_ThemePark.ShellGame {
 		public Pos swapToUpper;
 		public Pos swapToLower;
 
-		public ShellGame(StardewValley.Object prize, int swaps, IMonitor monitor)
+		public ShellGame(StardewValley.Object prize, int swaps, IMonitor monitor, IModHelper helper)
 		{
 			this.changeScreenSize();
 			this.prizeObject = prize;
 			this.MaxSwaps = swaps;
 			this.RemainingSwaps = swaps;
 			this.monitor = monitor;
+			this.modHelper = helper;
 			this.monitor.Log($"Shell Game starting! Prize:{prize.Name}, Swaps{swaps}");
-			//this.texture = 
+			this.bgtexture = this.modHelper.Content.Load<Texture2D>("assets/ShellGame/background.png");
 
 			// Todo: Game initialization stuff
 

@@ -16,9 +16,11 @@ namespace SDV_ThemePark
 {
     public class ModEntry : Mod
     {
+        private IModHelper modHelper;
         public override void Entry(IModHelper helper)
         {
-            helper.ConsoleCommands.Add("minigame_run", "Starts a minigame from the Theme Park mod.", this.TestGame);
+            this.modHelper = helper;
+            this.modHelper.ConsoleCommands.Add("minigame_run", "Starts a minigame from the Theme Park mod.", this.TestGame);
         }
 
         private void TestGame(string command, string[] args)
@@ -49,7 +51,7 @@ namespace SDV_ThemePark
             switch (gameName)
             {
                 case "shell":
-                    Game1.currentMinigame = new ShellGame.ShellGame(new StardewValley.Object(392, 1), 10, Monitor);
+                    Game1.currentMinigame = new ShellGame.ShellGame(new StardewValley.Object(392, 1), 10, Monitor, this.modHelper);
                     break;
                 default:
                     if (enteredNumber)
