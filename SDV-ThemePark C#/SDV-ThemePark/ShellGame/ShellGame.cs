@@ -29,11 +29,11 @@ namespace SDV_ThemePark.ShellGame {
 		public Pos prizePos;
 
 		// Screen managment
-		public Vector2 upperLeft;
-		private int screenWidth;
-		private int screenHeight;
 		public float pixelScale = 4f;
-		private Rectangle viewport;
+		public double minigameScale = 0.8;
+		private Vector2 topLeft;
+		private Rectangle minigameWindow;
+
 		// Positioning variables
 		public enum Pos
 		{
@@ -120,6 +120,9 @@ namespace SDV_ThemePark.ShellGame {
 					// Continue waiting
 					return false;
 				default:
+					this.monitor.Log($"Unhandled game state \"{Enum.GetName(typeof(GameState), this.currentGameState)}\" for tick() in minigame \"{this.minigameId()}\"", 
+						LogLevel.Warn);
+					this.monitor.Log($"Ending the minigame!", LogLevel.Warn);
 					return true;
             }
 		}
@@ -174,7 +177,7 @@ namespace SDV_ThemePark.ShellGame {
 		public void draw(SpriteBatch b)
 		{
 			b.Begin();
-			b.Draw(this.bgtexture, this.viewport, Color.White);
+			b.Draw(this.bgtexture, this.minigameWindow, Color.White);
 			switch (this.currentGameState)
             {
 				case (GameState.WaitToStart):
@@ -189,23 +192,15 @@ namespace SDV_ThemePark.ShellGame {
 		public void changeScreenSize()
 		{
 			// Screen Management
-			this.screenWidth = 320;
-			this.screenHeight = 320;
-			float pixel_zoom_adjustment = 1f / Game1.options.zoomLevel;
-			int viewport_width = Game1.game1.localMultiplayerWindow.Width;
-			int viewport_height = Game1.game1.localMultiplayerWindow.Height;
-			this.pixelScale = Math.Min(5f, Math.Min((float)viewport_width * pixel_zoom_adjustment / (float)this.screenWidth, (float)viewport_height * pixel_zoom_adjustment / (float)this.screenHeight));
-			float snap = 0.1f;
-			this.pixelScale = (float)(int)(this.pixelScale / snap) * snap;
-			this.upperLeft = new Vector2((float)(viewport_width / 2) * pixel_zoom_adjustment, (float)(viewport_height / 2) * pixel_zoom_adjustment);
-			this.upperLeft.X -= (float)(this.screenWidth / 2) * this.pixelScale;
-			this.upperLeft.Y -= (float)(this.screenHeight / 2) * this.pixelScale;
-			this.viewport = new Rectangle((int)this.upperLeft.X, (int)this.upperLeft.Y, viewport_width, viewport_height);
+			int window_width = Game1.game1.localMultiplayerWindow.Width;
+			int window_height = Game1.game1.localMultiplayerWindow.Height;
+			this.topLeft = Utility.getTopLeftPositionForCenteringOnScreen((int)(this.minigameScale * window_width), (int)(this.minigameScale * window_height));
+			this.minigameWindow = new Rectangle((int) this.topLeft.X, (int) this.topLeft.Y, (int)(this.minigameScale * window_width), (int)(this.minigameScale * window_height));
 
-			this.startButtonPos.X = (int)(0.3 * viewport_width + this.upperLeft.X);
-			this.startButtonPos.Width = (int)(0.4 * viewport_width);
-			this.startButtonPos.Y = (int)(0.2 * viewport_height + this.upperLeft.Y);
-			this.startButtonPos.Height = (int)(0.2 * viewport_height);
+			this.startButtonPos.X = (int)(0.3 * this.minigameWindow.Width + this.topLeft.X);
+			this.startButtonPos.Width = (int)(0.4 * this.minigameWindow.Width);
+			this.startButtonPos.Y = (int)(0.2 * this.minigameWindow.Height + this.topLeft.Y);
+			this.startButtonPos.Height = (int)(0.2 * this.minigameWindow.Height);
 		}
 
 		public void unload()
