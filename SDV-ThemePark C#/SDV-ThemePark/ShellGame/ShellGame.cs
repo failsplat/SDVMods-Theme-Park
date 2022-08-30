@@ -11,19 +11,14 @@ namespace SDV_ThemePark.ShellGame {
 	{
 		private IMonitor monitor;
 		private IModHelper modHelper;
-		// Screen managment
-		public Vector2 upperLeft;
-		private int screenWidth;
-		private int screenHeight;
-		public float pixelScale = 4f;
-		private Texture2D bgtexture;
+		
 		// Gameplay variables
 		public enum GameState
 		{
 			WaitToStart, // Waiting for player to press start
 			RevealStart, // Showing the player the prize under a shell
-			Swapping, // Moving shells around
-			WaitingForPick, // Done moving, waiting for player to select shell
+			SwapShells, // Moving shells around
+			WaitForPick, // Done moving, waiting for player to select shell
 			RevealPick, // Reveal shell
 			GameOver, // Show "Win" or "Lose" message
 		};
@@ -33,6 +28,12 @@ namespace SDV_ThemePark.ShellGame {
 		public StardewValley.Object prizeObject; // Object to be hidden in a shell, (?)and potentially won by player.
 		public Pos prizePos;
 
+		// Screen managment
+		public Vector2 upperLeft;
+		private int screenWidth;
+		private int screenHeight;
+		public float pixelScale = 4f;
+		private Rectangle viewport;
 		// Positioning variables
 		public enum Pos
 		{
@@ -60,6 +61,10 @@ namespace SDV_ThemePark.ShellGame {
 		public Pos swapToUpper;
 		public Pos swapToLower;
 
+		// Textures
+		private Texture2D bgtexture;
+		private Texture2D startbuttontexture;
+
 		public ShellGame(StardewValley.Object prize, int swaps, IMonitor monitor, IModHelper helper)
 		{
 			this.changeScreenSize();
@@ -70,6 +75,7 @@ namespace SDV_ThemePark.ShellGame {
 			this.modHelper = helper;
 			this.monitor.Log($"Shell Game starting! Prize:{prize.Name}, Swaps{swaps}");
 			this.bgtexture = this.modHelper.Content.Load<Texture2D>("assets/ShellGame/background.png");
+			this.startbuttontexture = this.modHelper.Content.Load<Texture2D>("assets/ShellGame/startbutton.png");
 
 			// Todo: Game initialization stuff
 
@@ -112,7 +118,7 @@ namespace SDV_ThemePark.ShellGame {
             {
 				case GameState.WaitToStart:
 					// Continue waiting
-					return true;
+					return false;
 				default:
 					return true;
             }
@@ -167,6 +173,17 @@ namespace SDV_ThemePark.ShellGame {
 
 		public void draw(SpriteBatch b)
 		{
+			b.Begin();
+			b.Draw(this.bgtexture, this.viewport, Color.White);
+			switch (this.currentGameState)
+            {
+				case (GameState.WaitToStart):
+					b.Draw(this.startbuttontexture, this.startButtonPos, Color.White);
+					break;
+				default:
+					break;
+            }
+			b.End();
 		}
 
 		public void changeScreenSize()
@@ -183,8 +200,12 @@ namespace SDV_ThemePark.ShellGame {
 			this.upperLeft = new Vector2((float)(viewport_width / 2) * pixel_zoom_adjustment, (float)(viewport_height / 2) * pixel_zoom_adjustment);
 			this.upperLeft.X -= (float)(this.screenWidth / 2) * this.pixelScale;
 			this.upperLeft.Y -= (float)(this.screenHeight / 2) * this.pixelScale;
+			this.viewport = new Rectangle((int)this.upperLeft.X, (int)this.upperLeft.Y, viewport_width, viewport_height);
 
-
+			this.startButtonPos.X = (int)(0.3 * viewport_width + this.upperLeft.X);
+			this.startButtonPos.Width = (int)(0.4 * viewport_width);
+			this.startButtonPos.Y = (int)(0.2 * viewport_height + this.upperLeft.Y);
+			this.startButtonPos.Height = (int)(0.2 * viewport_height);
 		}
 
 		public void unload()

@@ -20,7 +20,7 @@ namespace SDV_ThemePark
         public override void Entry(IModHelper helper)
         {
             this.modHelper = helper;
-            this.modHelper.ConsoleCommands.Add("minigame_run", "Starts a minigame from the Theme Park mod.", this.TestGame);
+            this.modHelper.ConsoleCommands.Add("tp_run_minigame", "Starts a minigame from the Theme Park mod.", this.TestGame);
         }
 
         private void TestGame(string command, string[] args)

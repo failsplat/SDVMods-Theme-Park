@@ -51,6 +51,7 @@
     <Compile Include="ShellGame\ShellGame.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="manifest.json" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

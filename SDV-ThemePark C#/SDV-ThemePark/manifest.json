@@ -7,7 +7,5 @@
     "UpdateKeys": [],
     "EntryDll":"SDV-ThemePark.dll",
     "Dependencies": [
-      {
-      }
     ]
 }
