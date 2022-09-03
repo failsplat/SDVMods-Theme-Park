@@ -45,7 +45,7 @@ namespace SDV_ThemePark
                 }
             }
             else {
-                gameName = args[0];
+                if (args.Length == 0) { gameName = gameNumbers[0]; } else { gameName = args[0]; }
             }
 
             switch (gameName)

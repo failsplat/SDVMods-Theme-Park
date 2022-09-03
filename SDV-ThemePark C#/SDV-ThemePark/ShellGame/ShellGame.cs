@@ -46,6 +46,7 @@ namespace SDV_ThemePark.ShellGame {
 		public System.Collections.Generic.List<Vector2> ShellPositions = new System.Collections.Generic.List<Vector2>();
 		public Vector2 ShellSize;
 		public Rectangle startButtonPos;
+		public Rectangle exitButtonPos;
 		// Recalculate these when the screen is resized
 
 		// Kinematics variables
@@ -66,6 +67,7 @@ namespace SDV_ThemePark.ShellGame {
 		private Texture2D bgtexture;
 		private Texture2D startbuttontexture;
 		private Texture2D shelltexture;
+		private Texture2D exitbuttontexture;
 
 		public ShellGame(StardewValley.Object prize, int swaps, IMonitor monitor, IModHelper helper)
 		{
@@ -79,8 +81,9 @@ namespace SDV_ThemePark.ShellGame {
 			this.bgtexture = this.modHelper.ModContent.Load<Texture2D>("assets/ShellGame/background.png");
 			this.startbuttontexture = this.modHelper.ModContent.Load<Texture2D>("assets/ShellGame/startbutton.png");
 			this.shelltexture = this.modHelper.ModContent.Load<Texture2D>("assets/ShellGame/shell.png");
+			this.exitbuttontexture = this.modHelper.ModContent.Load<Texture2D>("assets/ShellGame/exitbutton.png");
 			// Todo: Game initialization stuff
-            this.TransitionGameState(GameState.WaitToStart);
+			this.TransitionGameState(GameState.WaitToStart);
 		}
 
 		private void TransitionGameState(GameState new_state)
@@ -157,6 +160,17 @@ namespace SDV_ThemePark.ShellGame {
 
 		public void receiveLeftClick(int x, int y, bool playSound = true)
 		{
+			if (this.exitButtonPos.Contains(x, y)) {
+				this.forceQuit();
+				this.monitor.Log($"Exit button pressed, ending the minigame!", LogLevel.Info);
+				return;
+            }
+			switch (this.currentGameState)
+			{
+				case GameState.WaitToStart:
+					if (this.startButtonPos.Contains(x, y)) { this.TransitionGameState(GameState.RevealStart); } else { };
+					break;
+			}
 		}
 
 		public void releaseLeftClick(int x, int y)
@@ -190,12 +204,14 @@ namespace SDV_ThemePark.ShellGame {
 
 		public void QuitGame()
 		{
+			Game1.currentMinigame = null;
 		}
 
 		public void draw(SpriteBatch b)
 		{
 			b.Begin();
 			b.Draw(this.bgtexture, this.minigameWindow, Color.White);
+			b.Draw(this.exitbuttontexture, this.exitButtonPos, Color.White);
 			switch (this.currentGameState)
             {
 				case (GameState.WaitToStart):
@@ -229,6 +245,12 @@ namespace SDV_ThemePark.ShellGame {
 			this.startButtonPos.Width = (int)(0.4 * this.minigameWindow.Width);
 			this.startButtonPos.Y = (int)(0.2 * this.minigameWindow.Height + this.topLeft.Y);
 			this.startButtonPos.Height = (int)(0.2 * this.minigameWindow.Height);
+
+			int exit_button_size = Math.Max(64, (int)(window_width * 0.05));
+			this.exitButtonPos.X = (int) (this.minigameWindow.Width + this.topLeft.X - exit_button_size);
+			this.exitButtonPos.Width = exit_button_size;
+			this.exitButtonPos.Y = (int) (this.topLeft.Y);
+			this.exitButtonPos.Height = exit_button_size;
 
 			this.CalcShellRestPositions();
 		}
@@ -270,6 +292,7 @@ namespace SDV_ThemePark.ShellGame {
 		public bool forceQuit()
 		{
 			this.unload();
+			this.QuitGame();
 			return true;
 		}
 
