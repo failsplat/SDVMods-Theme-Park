@@ -43,6 +43,7 @@ namespace SDV_ThemePark.ShellGame {
 		};
 		// Pixel location and size of the shells (when not moving)
 		public System.Collections.Generic.Dictionary<Pos, Vector2> ShellRestPositions = new System.Collections.Generic.Dictionary<Pos, Vector2>();
+		public System.Collections.Generic.List<Vector2> ShellPositions = new System.Collections.Generic.List<Vector2>();
 		public Vector2 ShellSize;
 		public Rectangle startButtonPos;
 		// Recalculate these when the screen is resized
@@ -64,6 +65,7 @@ namespace SDV_ThemePark.ShellGame {
 		// Textures
 		private Texture2D bgtexture;
 		private Texture2D startbuttontexture;
+		private Texture2D shelltexture;
 
 		public ShellGame(StardewValley.Object prize, int swaps, IMonitor monitor, IModHelper helper)
 		{
@@ -74,12 +76,11 @@ namespace SDV_ThemePark.ShellGame {
 			this.monitor = monitor;
 			this.modHelper = helper;
 			this.monitor.Log($"Shell Game starting! Prize:{prize.Name}, Swaps{swaps}");
-			this.bgtexture = this.modHelper.Content.Load<Texture2D>("assets/ShellGame/background.png");
-			this.startbuttontexture = this.modHelper.Content.Load<Texture2D>("assets/ShellGame/startbutton.png");
-
+			this.bgtexture = this.modHelper.ModContent.Load<Texture2D>("assets/ShellGame/background.png");
+			this.startbuttontexture = this.modHelper.ModContent.Load<Texture2D>("assets/ShellGame/startbutton.png");
+			this.shelltexture = this.modHelper.ModContent.Load<Texture2D>("assets/ShellGame/shell.png");
 			// Todo: Game initialization stuff
-
-			this.TransitionGameState(GameState.WaitToStart);
+            this.TransitionGameState(GameState.WaitToStart);
 		}
 
 		private void TransitionGameState(GameState new_state)
@@ -88,6 +89,7 @@ namespace SDV_ThemePark.ShellGame {
             {
 				case GameState.WaitToStart:
 					this.currentGameState = new_state;
+					this.CalculateShellPositions(); // Calculate ONCE at start, then wait until movement starts to calculate on each tick
 					LogGameStateTransition(new_state, false, LogLevel.Trace);
 					break;
 				default:
@@ -126,6 +128,22 @@ namespace SDV_ThemePark.ShellGame {
 					return true;
             }
 		}
+
+		private void CalculateShellPositions()
+        {
+			this.ShellPositions.Clear();
+			switch (this.currentGameState)
+            {
+				case GameState.WaitToStart:
+					foreach (System.Collections.Generic.KeyValuePair<Pos, Vector2> entry in this.ShellRestPositions)
+                    {
+						this.ShellPositions.Add(entry.Value);
+                    }
+					break;
+				default:
+					break;
+            }
+        }
 
 		public virtual bool IsAiming()
 		{
@@ -182,12 +200,22 @@ namespace SDV_ThemePark.ShellGame {
             {
 				case (GameState.WaitToStart):
 					b.Draw(this.startbuttontexture, this.startButtonPos, Color.White);
+					this.drawShells(b);
 					break;
 				default:
 					break;
             }
 			b.End();
 		}
+
+		private void drawShells(SpriteBatch b)
+        {
+			foreach (Vector2 sp in this.ShellPositions) 
+            {
+				Rectangle shell_rect = new Rectangle((int)(sp.X+this.topLeft.X), (int)sp.Y, (int) this.ShellSize.X, (int) this.ShellSize.Y);
+				b.Draw(this.shelltexture, shell_rect, Color.White);
+            }
+        }
 
 		public void changeScreenSize()
 		{
@@ -201,6 +229,36 @@ namespace SDV_ThemePark.ShellGame {
 			this.startButtonPos.Width = (int)(0.4 * this.minigameWindow.Width);
 			this.startButtonPos.Y = (int)(0.2 * this.minigameWindow.Height + this.topLeft.Y);
 			this.startButtonPos.Height = (int)(0.2 * this.minigameWindow.Height);
+
+			this.CalcShellRestPositions();
+		}
+
+		private void CalcShellRestPositions()
+        {
+			int mg_window_width = this.minigameWindow.Width;
+			int num_pos = Enum.GetNames(typeof(Pos)).Length;
+			double shell_ww = 0.2; // width relative to game window
+			int shell_width = (int)(mg_window_width * shell_ww);
+			int shell_height = (int)(0.75 * shell_width); // 4:3 w:h ratio for sprite
+
+			this.ShellSize = new Vector2(x: shell_width, y: shell_height);
+
+			int shell_Y = (int)(0.5 * this.minigameWindow.Height + this.topLeft.Y);
+			int shell_X;
+
+			// Horiz pos of leftmost shell, in window-widths
+			double start_X_ww = 0.1;
+			// Size of each gap between shells, in window-widths
+			double gap_X_ww = num_pos>1?(1 - (2*start_X_ww) - (num_pos * shell_ww))/(num_pos-1):0;
+			
+
+			this.ShellRestPositions.Clear();
+			for (int p = 0; p < num_pos; p++)
+            {
+				shell_X = (int) ((start_X_ww + p * (gap_X_ww + shell_ww)) * mg_window_width);
+				this.ShellRestPositions[(Pos)p] = new Vector2(shell_X, shell_Y);
+            }
+
 		}
 
 		public void unload()
