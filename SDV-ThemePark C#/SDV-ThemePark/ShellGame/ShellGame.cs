@@ -92,7 +92,7 @@ namespace SDV_ThemePark.ShellGame {
 			this.RemainingSwaps = swaps;
 			this.monitor = monitor;
 			this.modHelper = helper;
-			this.monitor.Log($"Shell Game starting! Prize:{prize.Name}, Swaps{swaps}");
+			this.monitor.Log($"Shell Game starting! Prize:{prize.Name}, Swaps:{swaps}");
 			this.bgtexture = this.modHelper.ModContent.Load<Texture2D>("assets/ShellGame/background.png");
 			this.startbuttontexture = this.modHelper.ModContent.Load<Texture2D>("assets/ShellGame/startbutton.png");
 			this.shelltexture = this.modHelper.ModContent.Load<Texture2D>("assets/ShellGame/shell.png");
@@ -135,6 +135,9 @@ namespace SDV_ThemePark.ShellGame {
 					this.CalculateShellPositions(); // Calculate ONCE at start, then wait until movement starts to calculate on each tick
 					break;
 				case GameState.RevealPick:
+					this.t_shift = 0;
+					break;
+				case GameState.GameOver:
 					break;
 				default:
 					LogGameStateTransition(new_state, true, true, GameStateMessage.Unimplemented);
@@ -185,6 +188,7 @@ namespace SDV_ThemePark.ShellGame {
 					if (this.t_shift > (2 * (ShellGame.raiseLowerTime + ShellGame.raisePauseTime)))
                     {
 						this.TransitionGameState(GameState.SwapShells);
+						return false;
                     }
 					this.CalculateShellPositions();
 					return false;
@@ -194,15 +198,25 @@ namespace SDV_ThemePark.ShellGame {
                     {
 						this.t_shift = 0;
 						this.RemainingSwaps--;
-						this.SetupSwapMotion();
 						if (this.RemainingSwaps <= 0)
                         {
 							this.TransitionGameState(GameState.WaitForPick);
-                        }
-                    }
+							return false;
+						}
+						this.SetupSwapMotion(); 
+					}
 					this.CalculateShellPositions();
 					return false;
 				case GameState.RevealPick:
+					this.t_shift++;
+					if (this.t_shift > ShellGame.raiseLowerTime)
+                    {
+						this.TransitionGameState(GameState.GameOver);
+						return false;
+                    }
+					this.CalculateShellPositions();
+					return false;
+				case GameState.GameOver:
 					return false;
 				default:
 					this.monitor.Log($"Unhandled game state \"{Enum.GetName(typeof(GameState), this.currentGameState)}\" for tick() in minigame \"{this.minigameId()}\"", 
@@ -286,6 +300,27 @@ namespace SDV_ThemePark.ShellGame {
 						//this.monitor.Log($"C:{this.ShellPositions[1].X}, {this.ShellPositions[1].Y}", LogLevel.Trace);
 						//this.monitor.Log($"R:{this.ShellPositions[0].X}, {this.ShellPositions[2].Y}", LogLevel.Trace);
 					}
+					break;
+				case GameState.RevealPick:
+					int y_shift_rp;
+					int max_y_shift_rp = (int)(ShellGame.raiseLowerHeight * this.minigameWindow.Height);
+
+					y_shift_rp = (int)((double)max_y_shift_rp * ((double)this.t_shift / (double)ShellGame.raiseLowerTime));
+
+					for (int p = 0; p < num_pos; p++)
+					{
+						Pos pos = (Pos)p;
+						if (this.pickPos == pos)
+                        {
+							Rectangle sp = this.ShellRestPositions[pos];
+							sp.Y -= y_shift_rp;
+							this.ShellPositions.Add(sp);
+						} else
+                        {
+							this.ShellPositions.Add(this.ShellRestPositions[pos]);
+                        }
+					}
+
 					break;
 				default:
 					break;
@@ -412,6 +447,14 @@ namespace SDV_ThemePark.ShellGame {
 					this.DrawShells(b);
 					break;
 				case (GameState.WaitForPick):
+					this.DrawPrize(b); // For tracking prize position while testing/development, comment out later
+					this.DrawShells(b);
+					break;
+				case (GameState.RevealPick):
+					this.DrawPrize(b);
+					this.DrawShells(b);
+					break;
+				case (GameState.GameOver):
 					this.DrawPrize(b);
 					this.DrawShells(b);
 					break;
