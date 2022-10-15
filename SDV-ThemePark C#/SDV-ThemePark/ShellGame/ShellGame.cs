@@ -19,7 +19,8 @@ namespace SDV_ThemePark.ShellGame {
 			RevealStart, // Showing the player the prize under a shell
 			SwapShells, // Moving shells around
 			WaitForPick, // Done moving, waiting for player to select shell
-			RevealPick, // Reveal shell
+			RevealPickWin, // Reveal shell (winning)
+			RevealPickLoss, // Reveal incorrect pick, then prize's pick
 			GameOver, // Show "Win" or "Lose" message
 		};
 		public GameState currentGameState = GameState.WaitToStart;
@@ -29,6 +30,7 @@ namespace SDV_ThemePark.ShellGame {
 		public Pos prizePos;
 		public Pos pickPos;
 		private readonly Random random;
+		public bool givePrize;
 
 		// Screen managment
 		public float pixelScale = 4f;
@@ -46,11 +48,12 @@ namespace SDV_ThemePark.ShellGame {
 		public static int num_pos = Enum.GetNames(typeof(Pos)).Length;
 		// Pixel location and size of the shells (when not moving)
 		public System.Collections.Generic.Dictionary<Pos, Rectangle> ShellRestPositions = new System.Collections.Generic.Dictionary<Pos, Rectangle>();
-		public System.Collections.Generic.List<Rectangle> ShellPositions = new System.Collections.Generic.List<Rectangle>();
+		public System.Collections.Generic.Dictionary<Pos, Rectangle> ShellPositions = new System.Collections.Generic.Dictionary<Pos, Rectangle>();
 		public Vector2 ShellSize;
 		public Rectangle startButtonPos;
 		public Rectangle exitButtonPos;
 		public System.Collections.Generic.Dictionary<Pos, Rectangle> PrizeDisplayPositions = new System.Collections.Generic.Dictionary<Pos, Rectangle>();
+		public System.Collections.Generic.List<Pos> ShellDrawOrder = new System.Collections.Generic.List<Pos>();
 		// Recalculate these when the screen is resized
 
 		// Kinematics variables
@@ -75,7 +78,6 @@ namespace SDV_ThemePark.ShellGame {
 		public bool swap_cw;
 		public int swap_center_x, swap_center_y;
 		public int swap_r;
-		
 
 		// Textures
 		private Texture2D bgtexture;
@@ -89,7 +91,7 @@ namespace SDV_ThemePark.ShellGame {
 			this.changeScreenSize();
 			this.prizeObject = prize;
 			this.MaxSwaps = swaps;
-			this.RemainingSwaps = swaps;
+			this.RemainingSwaps = 0;
 			this.monitor = monitor;
 			this.modHelper = helper;
 			this.monitor.Log($"Shell Game starting! Prize:{prize.Name}, Swaps:{swaps}");
@@ -99,6 +101,11 @@ namespace SDV_ThemePark.ShellGame {
 			this.exitbuttontexture = this.modHelper.ModContent.Load<Texture2D>("assets/ShellGame/exitbutton.png");
 			this.prizeTileSheetRect = Game1.getSourceRectForStandardTileSheet(Game1.objectSpriteSheet, prize.ParentSheetIndex, 16, 16);
 			this.random = new Random();
+			this.ShellDrawOrder.Clear();
+			this.ShellDrawOrder.Add(Pos.Left);
+			this.ShellDrawOrder.Add(Pos.Center);
+			this.ShellDrawOrder.Add(Pos.Right);
+			this.givePrize = false;
 			//this.monitor.Log($"Ecc, Axis Ratio: {ShellGame.swapEccentricity}, {ShellGame.axisRatio}", LogLevel.Debug);
 
 			this.TransitionGameState(GameState.WaitToStart);
@@ -106,10 +113,7 @@ namespace SDV_ThemePark.ShellGame {
 
 		private void TransitionGameState(GameState new_state)
 		{
-			if ((new_state - this.currentGameState) > 1)
-            {
-				LogGameStateTransition(new_state, true, true, GameStateMessage.Skip);
-            } else if ((new_state - this.currentGameState) < 0)
+			if ((new_state - this.currentGameState) < 0)
 			{
 				LogGameStateTransition(new_state, true, true, GameStateMessage.Regress);
 			}
@@ -129,13 +133,21 @@ namespace SDV_ThemePark.ShellGame {
 					break;
 				case GameState.SwapShells:
 					this.t_shift = 0;
+					this.RemainingSwaps = this.MaxSwaps;
 					this.SetupSwapMotion();
 					break;
 				case GameState.WaitForPick:
 					this.CalculateShellPositions(); // Calculate ONCE at start, then wait until movement starts to calculate on each tick
 					break;
-				case GameState.RevealPick:
+				case GameState.RevealPickWin:
 					this.t_shift = 0;
+					this.givePrize = true;
+					break;
+				case GameState.RevealPickLoss:
+					this.monitor.Log("Pick:"+this.pickPos.ToString() + " Prize:" + this.prizePos.ToString(), LogLevel.Debug);
+					this.t_shift = 0;
+					this.RemainingSwaps = 1;
+					this.ShellPositions = new System.Collections.Generic.Dictionary<Pos, Rectangle>(this.ShellRestPositions);
 					break;
 				case GameState.GameOver:
 					break;
@@ -152,7 +164,7 @@ namespace SDV_ThemePark.ShellGame {
 			public static readonly string Unimplemented = "Unimplemented game state change!";
 			public static readonly string Normal = "Game state change:";
 			public static readonly string Error = "Error in game state change!";
-			public static readonly string Skip = "TransitionGameState called to skip phases!";
+			//public static readonly string Skip = "TransitionGameState called to skip phases!";
 			public static readonly string Already = "TransitionGameState called with already active phase!";
 			public static readonly string Regress = "TransitionGameState called to regress phases!";
 		}
@@ -207,13 +219,30 @@ namespace SDV_ThemePark.ShellGame {
 					}
 					this.CalculateShellPositions();
 					return false;
-				case GameState.RevealPick:
+				case GameState.RevealPickWin:
 					this.t_shift++;
 					if (this.t_shift > ShellGame.raiseLowerTime)
                     {
 						this.TransitionGameState(GameState.GameOver);
 						return false;
                     }
+					this.CalculateShellPositions();
+					return false;
+				case GameState.RevealPickLoss:
+					this.t_shift++;
+					if (this.t_shift > ShellGame.raiseLowerTime)
+					{
+						if (this.RemainingSwaps == 0) 
+						{ 
+							this.TransitionGameState(GameState.GameOver);  
+						} else
+                        {
+							this.RemainingSwaps = 0;
+							this.t_shift = 0;
+                        }
+						
+						return false;
+					}
 					this.CalculateShellPositions();
 					return false;
 				case GameState.GameOver:
@@ -227,15 +256,12 @@ namespace SDV_ThemePark.ShellGame {
 
 		private void CalculateShellPositions()
         {
-			this.ShellPositions.Clear();
 			switch (this.currentGameState)
 			{
 				case GameState.WaitToStart:
 				case GameState.WaitForPick:
-					foreach (System.Collections.Generic.KeyValuePair<Pos, Rectangle> entry in this.ShellRestPositions)
-					{
-						this.ShellPositions.Add(entry.Value);
-					}
+					// These are called ONCE when the state transitions
+					this.ShellPositions = new System.Collections.Generic.Dictionary<Pos, Rectangle>(this.ShellRestPositions);
 					break;
 				case GameState.RevealStart:
 					int y_shift;
@@ -262,11 +288,9 @@ namespace SDV_ThemePark.ShellGame {
                     { // Lowering
 						y_shift = (int)(max_y_shift * (1-((this.t_shift - movement_times[2]) / ShellGame.raiseLowerTime)));
 					}
-					this.ShellPositions.Add(this.ShellRestPositions[Pos.Left]);
-					this.ShellPositions.Add(this.ShellRestPositions[Pos.Right]);
-					Rectangle center_shell = this.ShellRestPositions[Pos.Center];
-					center_shell.Y -= y_shift;
-					this.ShellPositions.Add(center_shell);
+					Rectangle centershell = this.ShellRestPositions[Pos.Center];
+					centershell.Y -= y_shift;
+					this.ShellPositions[Pos.Center] = centershell;
 					break;
 				case GameState.SwapShells:
 					double phi = Math.PI * ((double)this.t_shift / (double)this.swapTime); // Phi = angle of rotation, goes from 0 to pi over swapTime
@@ -279,49 +303,49 @@ namespace SDV_ThemePark.ShellGame {
 					(xl, yl) = SwapEllipseParametric((double)this.swap_center_x, (double)this.swap_center_y, (double) this.swap_r, thl, ShellGame.axisRatio);
 					(xr, yr) = SwapEllipseParametric((double)this.swap_center_x, (double)this.swap_center_y, (double)this.swap_r, thr, ShellGame.axisRatio);
 
-					if (this.swap_cw)
-                    {
-						this.ShellPositions.Add(new Rectangle((int)xl, (int)yl, (int)this.ShellSize.X, (int)this.ShellSize.Y));
-						this.ShellPositions.Add(this.ShellRestPositions[this.not_swapped_pos]);
-						this.ShellPositions.Add(new Rectangle((int)xr, (int)yr, (int)this.ShellSize.X, (int)this.ShellSize.Y));
-
-						// Motion tracing
-						//this.monitor.Log($"L:{this.ShellPositions[0].X}, {this.ShellPositions[0].Y}", LogLevel.Trace);
-						//this.monitor.Log($"C:{this.ShellPositions[1].X}, {this.ShellPositions[1].Y}", LogLevel.Trace);
-						//this.monitor.Log($"R:{this.ShellPositions[2].X}, {this.ShellPositions[2].Y}", LogLevel.Trace);
-					} else
-                    {
-						this.ShellPositions.Add(new Rectangle((int)xr, (int)yr, (int)this.ShellSize.X, (int)this.ShellSize.Y));
-						this.ShellPositions.Add(this.ShellRestPositions[this.not_swapped_pos]);
-						this.ShellPositions.Add(new Rectangle((int)xl, (int)yl, (int)this.ShellSize.X, (int)this.ShellSize.Y));
-
-						// Motion tracing
-						//this.monitor.Log($"L:{this.ShellPositions[2].X}, {this.ShellPositions[0].Y}", LogLevel.Trace);
-						//this.monitor.Log($"C:{this.ShellPositions[1].X}, {this.ShellPositions[1].Y}", LogLevel.Trace);
-						//this.monitor.Log($"R:{this.ShellPositions[0].X}, {this.ShellPositions[2].Y}", LogLevel.Trace);
-					}
+					this.ShellPositions[this.swapLeft] = new Rectangle((int)xl, (int)yl, (int)this.ShellSize.X, (int)this.ShellSize.Y);
+					this.ShellPositions[this.not_swapped_pos] = this.ShellRestPositions[this.not_swapped_pos];
+					this.ShellPositions[this.swapRight] = new Rectangle((int)xr, (int)yr, (int)this.ShellSize.X, (int)this.ShellSize.Y);
+						
+					// Motion tracing
+					//this.monitor.Log($"L:{this.ShellPositions[0].X}, {this.ShellPositions[0].Y}", LogLevel.Trace);
+					//this.monitor.Log($"C:{this.ShellPositions[1].X}, {this.ShellPositions[1].Y}", LogLevel.Trace);
+					//this.monitor.Log($"R:{this.ShellPositions[2].X}, {this.ShellPositions[2].Y}", LogLevel.Trace);
+	
 					break;
-				case GameState.RevealPick:
-					int y_shift_rp;
-					int max_y_shift_rp = (int)(ShellGame.raiseLowerHeight * this.minigameWindow.Height);
-
-					y_shift_rp = (int)((double)max_y_shift_rp * ((double)this.t_shift / (double)ShellGame.raiseLowerTime));
-
-					for (int p = 0; p < num_pos; p++)
+				case GameState.RevealPickWin:
 					{
-						Pos pos = (Pos)p;
-						if (this.pickPos == pos)
-                        {
-							Rectangle sp = this.ShellRestPositions[pos];
-							sp.Y -= y_shift_rp;
-							this.ShellPositions.Add(sp);
-						} else
-                        {
-							this.ShellPositions.Add(this.ShellRestPositions[pos]);
-                        }
-					}
+						int y_shift_rp;
+						int max_y_shift_rp = (int)(ShellGame.raiseLowerHeight * this.minigameWindow.Height);
 
-					break;
+						y_shift_rp = (int)((double)max_y_shift_rp * ((double)this.t_shift / (double)ShellGame.raiseLowerTime));
+
+						Rectangle sp = this.ShellRestPositions[this.pickPos];
+						sp.Y -= y_shift_rp;
+						this.ShellPositions[this.pickPos] = sp;
+
+						break;
+					}
+				case GameState.RevealPickLoss:
+					{
+						int y_shift_rp;
+						int max_y_shift_rp = (int)(ShellGame.raiseLowerHeight * this.minigameWindow.Height);
+						y_shift_rp = (int)((double)max_y_shift_rp * ((double)this.t_shift / (double)ShellGame.raiseLowerTime));
+
+						Pos rp;
+						if (this.RemainingSwaps == 0)
+                        {
+							rp = this.prizePos;
+                        }
+						else
+                        {
+							rp = this.pickPos;
+                        }
+						Rectangle sp = this.ShellRestPositions[rp];
+						sp.Y -= y_shift_rp;
+						this.ShellPositions[rp] = sp;
+						break;
+					}
 				default:
 					break;
             }
@@ -363,7 +387,23 @@ namespace SDV_ThemePark.ShellGame {
 			this.swap_center_y = this.ShellRestPositions[Pos.Center].Y;
 			this.swap_r = this.ShellRestPositions[this.swapToLower].X - this.swap_center_x;
 
+			this.ShellDrawOrder.Clear();
+			if (this.swap_cw)
+            {
+				this.ShellDrawOrder.Add(this.swapLeft);
+				this.ShellDrawOrder.Add(this.not_swapped_pos);
+				this.ShellDrawOrder.Add(this.swapRight);
+			} else
+            {
+				this.ShellDrawOrder.Add(this.swapRight);
+				this.ShellDrawOrder.Add(this.not_swapped_pos);
+				this.ShellDrawOrder.Add(this.swapLeft);
+			}
+
+			this.ShellPositions = new System.Collections.Generic.Dictionary<Pos, Rectangle>(this.ShellRestPositions);
+
 			//this.monitor.Log($"Center({this.RemainingSwaps}: {this.swap_center_x},{this.swap_center_y}", LogLevel.Trace);// Motion tracing
+			this.monitor.Log(this.swapToLower.ToString() +'|'+ this.swapToUpper.ToString(), LogLevel.Debug);
 		}
 
 		public void receiveLeftClick(int x, int y, bool playSound = true)
@@ -384,7 +424,12 @@ namespace SDV_ThemePark.ShellGame {
 						Pos pos = (Pos)p;
 						if (this.ShellRestPositions[pos].Contains(x, y)) { 
 							this.pickPos = pos;
-							this.TransitionGameState(GameState.RevealPick);
+							if (this.pickPos == this.prizePos) {
+								this.TransitionGameState(GameState.RevealPickWin);
+							} else
+                            {
+								this.TransitionGameState(GameState.RevealPickLoss);
+                            }
 						}
 					}
 					break;
@@ -394,15 +439,6 @@ namespace SDV_ThemePark.ShellGame {
 		}
 
 		public void releaseLeftClick(int x, int y)
-		{
-		}
-
-		public virtual int GetPointsForAim()
-		{
-			return 0;
-		}
-
-		public virtual void FireDart(float radius)
 		{
 		}
 
@@ -450,7 +486,8 @@ namespace SDV_ThemePark.ShellGame {
 					this.DrawPrize(b); // For tracking prize position while testing/development, comment out later
 					this.DrawShells(b);
 					break;
-				case (GameState.RevealPick):
+				case (GameState.RevealPickWin):
+				case (GameState.RevealPickLoss):
 					this.DrawPrize(b);
 					this.DrawShells(b);
 					break;
@@ -466,9 +503,9 @@ namespace SDV_ThemePark.ShellGame {
 
 		private void DrawShells(SpriteBatch b)
         {
-			foreach (Rectangle sp in this.ShellPositions) 
+			foreach (Pos sp in this.ShellDrawOrder) 
             {
-				b.Draw(this.shelltexture, sp, Color.White);
+				b.Draw(this.shelltexture, this.ShellPositions[sp], Color.White);
             }
         }
 
@@ -563,6 +600,10 @@ namespace SDV_ThemePark.ShellGame {
 
 		public bool forceQuit()
 		{
+			if (this.givePrize)
+            {
+				
+            }
 			this.unload();
 			this.QuitGame();
 			return true;
