@@ -144,7 +144,7 @@ namespace SDV_ThemePark.ShellGame {
 					this.givePrize = true;
 					break;
 				case GameState.RevealPickLoss:
-					this.monitor.Log("Pick:"+this.pickPos.ToString() + " Prize:" + this.prizePos.ToString(), LogLevel.Debug);
+					//this.monitor.Log("Pick:"+this.pickPos.ToString() + " Prize:" + this.prizePos.ToString(), LogLevel.Debug);
 					this.t_shift = 0;
 					this.RemainingSwaps = 1;
 					this.ShellPositions = new System.Collections.Generic.Dictionary<Pos, Rectangle>(this.ShellRestPositions);
@@ -172,7 +172,7 @@ namespace SDV_ThemePark.ShellGame {
 		private void LogGameStateTransition(GameState new_state, bool log_current_state, bool is_error, string message)
         {
 			string log_message = message;
-			LogLevel log_level = is_error ? LogLevel.Error : LogLevel.Debug;
+			LogLevel log_level = is_error ? LogLevel.Error : LogLevel.Trace;
 			if (log_current_state && new_state != this.currentGameState) {
 				message += $" \"{Enum.GetName(typeof(GameState), this.currentGameState)}\"->\"{Enum.GetName(typeof(GameState), new_state)}\"";
 			} else
@@ -403,14 +403,14 @@ namespace SDV_ThemePark.ShellGame {
 			this.ShellPositions = new System.Collections.Generic.Dictionary<Pos, Rectangle>(this.ShellRestPositions);
 
 			//this.monitor.Log($"Center({this.RemainingSwaps}: {this.swap_center_x},{this.swap_center_y}", LogLevel.Trace);// Motion tracing
-			this.monitor.Log(this.swapToLower.ToString() +'|'+ this.swapToUpper.ToString(), LogLevel.Debug);
+			//this.monitor.Log(this.swapToLower.ToString() +'|'+ this.swapToUpper.ToString(), LogLevel.Debug);
 		}
 
 		public void receiveLeftClick(int x, int y, bool playSound = true)
 		{
 			if (this.exitButtonPos.Contains(x, y)) {
 				this.forceQuit();
-				this.monitor.Log($"Exit button pressed, ending the minigame!", LogLevel.Info);
+				//this.monitor.Log($"Exit button pressed, ending the minigame!", LogLevel.Info);
 				return;
             }
 			switch (this.currentGameState)
@@ -602,7 +602,9 @@ namespace SDV_ThemePark.ShellGame {
 		{
 			if (this.givePrize)
             {
-				
+				System.Collections.Generic.List<StardewValley.Item> prizeList = new System.Collections.Generic.List<StardewValley.Item>();
+				prizeList.Add(this.prizeObject);
+				Game1.player.addItemsByMenuIfNecessary(prizeList);
             }
 			this.unload();
 			this.QuitGame();
